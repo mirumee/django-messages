@@ -48,7 +48,7 @@ class Message(models.Model):
     """
     subject = models.CharField(_("Subject"), max_length=120)
     body = models.TextField(_("Body"))
-    sender = models.ForeignKey(User, related_name='sent_messages', verbose_name=_("Sender"))
+    sender = models.ForeignKey(User, related_name='sent_messages', verbose_name=_("Sender"), blank=True, null=True)
     recipient = models.ForeignKey(User, related_name='received_messages', null=True, blank=True, verbose_name=_("Recipient"))
     parent_msg = models.ForeignKey('self', related_name='next_messages', null=True, blank=True, verbose_name=_("Parent message"))
     sent_at = models.DateTimeField(_("sent at"), null=True, blank=True)
@@ -78,10 +78,10 @@ class Message(models.Model):
         return ('messages_detail', [self.id])
     get_absolute_url = models.permalink(get_absolute_url)
     
-    def save(self, force_insert=False, force_update=False):
+    def save(self, **kwargs):
         if not self.id:
             self.sent_at = datetime.datetime.now()
-        super(Message, self).save(force_insert, force_update) 
+        super(Message, self).save(**kwargs)
     
     class Meta:
         ordering = ['-sent_at']

@@ -15,10 +15,10 @@ from django_messages.models import Message
 from django_messages.forms import ComposeForm
 from django_messages.utils import format_quote
 
-if "notification" in settings.INSTALLED_APPS:
-    from notification import models as notification
-else:
-    notification = None
+#if "notification" in settings.INSTALLED_APPS:
+#    from notification import models as notification
+#else:
+notification = None
 
 def inbox(request, template_name='django_messages/inbox.html'):
     """

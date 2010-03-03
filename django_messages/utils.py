@@ -1,9 +1,13 @@
+# -*- coding:utf-8 -*-
+import re
+
+from django.conf import settings
+from django.contrib.sites.models import Site
+from django.utils.encoding import force_unicode
 from django.utils.text import wrap
 from django.utils.translation import ugettext_lazy as _
-from django.contrib.sites.models import Site
 from django.template import Context, loader
 from django.template.loader import render_to_string
-from django.conf import settings
 
 # favour django-mailer but fall back to django.core.mail
 
@@ -12,7 +16,7 @@ if "mailer" in settings.INSTALLED_APPS:
 else:
     from django.core.mail import send_mail
 
-def format_quote(text):
+def format_quote(sender, body):
     """
     Wraps text at 55 chars and prepends each
     line with `> `.
@@ -21,8 +25,12 @@ def format_quote(text):
     lines = wrap(text, 55).split('\n')
     for i, line in enumerate(lines):
         lines[i] = "> %s" % line
-    return '\n'.join(lines)
-    
+    quote = '\n'.join(lines)
+    return _(u"%(sender)s wrote:\n%(body)s") % {
+        'sender': sender,
+        'body': quote,
+    }
+
 def new_message_email(sender, instance, signal, 
         subject_prefix=_(u'New Message: %(subject)s'),
         template_name="django_messages/new_message.html",

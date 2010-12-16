@@ -5,10 +5,10 @@ from django.utils.translation import ugettext_lazy as _
 from django.utils.translation import ugettext_noop
 from django.contrib.auth.models import User
 
-#if "notification" in settings.INSTALLED_APPS:
-#    from notification import models as notification
-#else:
-notification = None
+if "notification" in settings.INSTALLED_APPS:
+    from notification import models as notification
+else:
+    notification = None
 
 from django_messages.models import Message
 from django_messages.fields import CommaSeparatedUserField

@@ -41,7 +41,7 @@ outbox = login_required(outbox)
 
 def trash(request, template_name='django_messages/trash.html'):
     """
-    Displays a list of deleted messages. 
+    Displays a list of deleted messages.
     Optional arguments:
         ``template_name``: name of the template to use
     Hint: A Cron-Job could periodicly clean up old messages, which are deleted
@@ -81,8 +81,8 @@ def compose(request, recipient=None, form_class=ComposeForm,
     else:
         form = form_class()
         if recipient is not None:
-            recipients = [u for u in User.objects.filter(username__in=[r.strip() for r in recipient.split('+')])]
-            form.fields['recipient'].initial = recipients
+            recipients = [u.username for u in User.objects.filter(username__in=[r.strip() for r in recipient.split('+')])]
+            form.fields['recipient'].initial = ','.join(recipients)
     return render_to_response(template_name, {
         'form': form,
     }, context_instance=RequestContext(request))
@@ -98,10 +98,10 @@ def reply(request, message_id, form_class=ComposeForm,
     the quote by default but you can use different formater.
     """
     parent = get_object_or_404(Message, id=message_id)
-    
+
     if parent.sender != request.user and parent.recipient != request.user:
         raise Http404
-    
+
     if request.method == "POST":
         sender = request.user
         form = form_class(request.POST, recipient_filter=recipient_filter)
@@ -127,11 +127,11 @@ def delete(request, message_id, success_url=None):
     """
     Marks a message as deleted by sender or recipient. The message is not
     really removed from the database, because two users must delete a message
-    before it's save to remove it completely. 
-    A cron-job should prune the database and remove old messages which are 
+    before it's save to remove it completely.
+    A cron-job should prune the database and remove old messages which are
     deleted by both users.
     As a side effect, this makes it easy to implement a trash with undelete.
-    
+
     You can pass ?next=/foo/bar/ via the url to redirect the user to a different
     page (e.g. `/foo/bar/`) than ``success_url`` after deletion of the message.
     """
@@ -184,10 +184,10 @@ undelete = login_required(undelete)
 def view(request, message_id, template_name='django_messages/view.html'):
     """
     Shows a single message.``message_id`` argument is required.
-    The user is only allowed to see the message, if he is either 
+    The user is only allowed to see the message, if he is either
     the sender or the recipient. If the user is not allowed a 404
-    is raised. 
-    If the user is the recipient and the message is unread 
+    is raised.
+    If the user is the recipient and the message is unread
     ``read_at`` is set to the current datetime.
     """
     user = request.user

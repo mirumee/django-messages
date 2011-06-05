@@ -85,7 +85,7 @@ def compose(request, recipient=None, form_class=ComposeForm,
             messages.add_message(request, messages.SUCCESS, _(u"Message successfully sent."))
             return redirect(success_url or request.GET.get('next') or inbox)
     else:
-        form = form_class(request.user, initial={'recipient': recipient})
+        form = form_class(request.user, initial={'recipients': recipient})
 
     ctx = extra_context or {}
     ctx.update({

@@ -4,6 +4,7 @@ from django.conf import settings
 from django.utils.translation import ugettext_lazy as _
 from django.utils.translation import ugettext_noop
 from django.contrib.auth.models import User
+import uuid
 
 if "notification" in settings.INSTALLED_APPS:
     from notification import models as notification
@@ -33,7 +34,7 @@ class MessageForm(forms.ModelForm):
         self.sender = sender
         super(MessageForm, self).__init__(*args, **kw)
         if recipient_filter is not None:
-            self.fields['recipient']._recipient_filter = recipient_filter
+            self.fields['recipients']._recipient_filter = recipient_filter
 
     def create_recipient_message(self, recipient, message):
         return Message(
@@ -43,20 +44,35 @@ class MessageForm(forms.ModelForm):
             recipient = recipient,
             subject = message.subject,
             body = message.body,
+            thread = message.thread,
+            sent_at = message.sent_at,
         )
 
+    def get_thread(self, message):
+        return message.thread or uuid.uuid4().hex
+
     def save(self, commit=True):
-        recipients = self.cleaned_data['recipient']
-        instance = super(ComposeForm, self).save(commit=False)
+        recipients = self.cleaned_data['recipients']
+        instance = super(MessageForm, self).save(commit=False)
+        instance.sender = self.sender
+        instance.owner = self.sender
+        instance.recipient = recipients[0]
+        instance.thread = self.get_thread(instance)
+        instance.unread = False
+        instance.sent_at = datetime.datetime.now()
 
         message_list = []
 
         # clone messages in recipients inboxes
         for r in recipients:
+            if r == self.sender: # skip duplicates
+                continue
             msg = self.create_recipient_message(r, instance)
             message_list.append(msg)
 
         instance.to = ','.join([r.username for r in recipients])
+
+        message_list.append(instance)
 
         if commit:
             instance.save()
@@ -86,16 +102,39 @@ class ReplyForm(MessageForm):
 
     def __init__(self, sender, message, *args, **kw):
         self.parent_message = message
-        super(ReplyForm, self).__init__(self, sender, *args, **kw)
+        initial = kw.pop('initial', {})
+        initial['recipients'] = message.sender.username
+        initial['body'] = self.quote_message(message)
+        initial['subject'] = self.quote_subject(message.subject)
+        kw['initial'] = initial
+        super(ReplyForm, self).__init__(sender, *args, **kw)
     
-    def quote_message(self):
-        return format_quote(self.sender, self.parent_message.body)
+    def quote_message(self, original_message):
+        return format_quote(original_message.sender, original_message.body)
+
+    def quote_subject(self, subject):
+        return u'Re: %s' % subject
 
     def create_recipient_message(self, recipient, message):
         msg = super(ReplyForm, self).create_recipient_message(recipient, message)
         msg.replied_at = datetime.datetime.now()
-        # msg.parent_msg = ???  find parent in recipient inbox, trash or set to null
+
+        # find parent in recipient messages
+        try:
+            msg.parent_msg = Message.objects.get(
+                owner=recipient,
+                sender=message.recipient,
+                recipient=message.sender,
+                thread=message.thread)
+        except (Message.DoesNotExist, Message.MultipleObjectsReturned):
+            # message may be deleted 
+            pass
+
         return msg
+
+
+    def get_thread(self, message):
+        return self.parent_message.thread
 
     def save(self, commit=True):
         instance, message_list = super(ReplyForm, self).save(commit=False)

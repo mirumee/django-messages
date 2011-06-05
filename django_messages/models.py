@@ -1,7 +1,7 @@
 import datetime
 from django.db import models
 from django.conf import settings
-from django.db.models import signals, Q
+from django.db.models import signals
 from django.db.models.query import QuerySet
 from django.contrib.auth.models import User
 from django.utils.translation import ugettext_lazy as _
@@ -14,7 +14,7 @@ class MessageQueryset(QuerySet):
 
 class BaseMessageManager(models.Manager):
     def get_query_set(self):
-        return MessageQueryset(self.model).filter(deleted=False)
+        return MessageQueryset(self.model)
     
     def trash(self, messages):
         """
@@ -29,22 +29,28 @@ class BaseMessageManager(models.Manager):
         pass
 
 
-class Inbox(models.Manager):
+class Inbox(BaseMessageManager):
+    def get_query_set(self):
+        return super(Inbox, self).get_query_set().filter(deleted=False)
+
     def for_user(self, user):
         """
         Returns all messages that were received by the given user and are not
         marked as deleted.
         """
-        return self.get_query_set().filter(recipient=user)
+        return self.get_query_set().filter(owner=user, recipient=user)
 
 
-class Outbox(models.Manager):
+class Outbox(BaseMessageManager):
+    def get_query_set(self):
+        return super(Outbox, self).get_query_set().filter(deleted=False)
+
     def for_user(self, user):
         """
         Returns all messages that were sent by the given user and are not
         marked as deleted.
         """
-        return self.get_query_set().filter(sender=user)
+        return self.get_query_set().filter(owner=user, sender=user)
 
 
 class Trash(BaseMessageManager):
@@ -60,7 +66,7 @@ class Trash(BaseMessageManager):
         Returns all messages that were either received or sent by the given
         user and are marked as deleted.
         """
-        return self.get_query_set().filter(Q(recipient=user)|Q(sender=user))
+        return self.get_query_set().filter(owner=user)
 
 
 class Message(models.Model):
@@ -68,11 +74,12 @@ class Message(models.Model):
     A private message from user to user
     """
     owner = models.ForeignKey(User, related_name='messages')
-    to = models.CharField(max_length=255)
+    to = models.CharField(max_length=255) # recipient usernames comma separated
     subject = models.CharField(_("Subject"), max_length=120)
     body = models.TextField(_("Body"))
-    sender = models.ForeignKey(User, related_name='sent_messages', verbose_name=_("Sender"))
-    recipient = models.ForeignKey(User, related_name='received_messages', null=True, blank=True, verbose_name=_("Recipient"))
+    sender = models.ForeignKey(User, related_name='+', verbose_name=_("Sender"))
+    recipient = models.ForeignKey(User, related_name='+', null=True, blank=True, verbose_name=_("Recipient"))
+    thread = models.CharField(max_length=64, null=True, blank=True, db_index=True)
     parent_msg = models.ForeignKey('self', related_name='next_messages', null=True, blank=True, verbose_name=_("Parent message"))
     sent_at = models.DateTimeField(_("sent at"), null=True, blank=True)
     unread = models.BooleanField(default=True, db_index=True)
@@ -90,15 +97,19 @@ class Message(models.Model):
         """returns whether the recipient has read the message or not"""
         return bool(self.read_at is None)
 
-    def read(self):
+    def undelete(self):
+        self.deleted = False
+        self.deleted_at = None
+
+    def mark_read(self):
         self.unread = False
         self.read_at = datetime.datetime.now()
 
-    def unread(self):
+    def mark_unread(self):
         self.unread = True
         self.read_at = None
 
-    def trash(self):
+    def move_to_trash(self):
         self.deleted = True
         self.deleted_at = datetime.datetime.now()
         
@@ -108,6 +119,9 @@ class Message(models.Model):
     
     def __unicode__(self):
         return self.subject
+
+    def all_recipients(self):
+        return User.objects.filter(username__in=self.to.split(','))
     
     @models.permalink
     def get_absolute_url(self):
@@ -117,6 +131,7 @@ class Message(models.Model):
         ordering = ['-sent_at']
         verbose_name = _("Message")
         verbose_name_plural = _("Messages")
+        db_table = 'messages_message'
         
 
 def inbox_count_for(user):

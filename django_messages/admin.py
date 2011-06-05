@@ -51,7 +51,7 @@ class MessageAdmin(admin.ModelAdmin):
         (_('Date/time'), {
             'fields': (
                 'sent_at', 'read_at', 'replied_at',
-                'sender_deleted_at', 'recipient_deleted_at',
+                'deleted_at',
             ),
             'classes': ('collapse', 'wide'),
         }),

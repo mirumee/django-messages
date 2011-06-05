@@ -72,12 +72,13 @@ class MessageForm(forms.ModelForm):
 
         instance.to = ','.join([r.username for r in recipients])
 
-        message_list.append(instance)
-
         if commit:
             instance.save()
             for msg in message_list:
                 msg.save()
+                if notification:
+                    notification.send([msg.recipient], 
+                            "messages_received", {'message': msg,})
          
         return instance, message_list
 
@@ -144,13 +145,12 @@ class ReplyForm(MessageForm):
             instance.save()
             for msg in message_list:
                 msg.save()
+                if notification:
+                    notification.send([msg.recipient],
+                            "messages_reply_received", {
+                                'message': msg,
+                                'parent_msg': self.parent_message,
+                                })
         return instance, message_list
 
 
-"""
-if notification:
-    if parent_msg is not None:
-        notification.send([r], "messages_reply_received", {'message': msg,})
-    else:
-        notification.send([r], "messages_received", {'message': msg,})
-"""

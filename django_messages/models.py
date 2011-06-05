@@ -125,7 +125,7 @@ class Message(models.Model):
     
     @models.permalink
     def get_absolute_url(self):
-        return ('messages_detail', (self.id,))
+        return ('messages_detail', None, {'message_id': self.pk})
     
     class Meta:
         ordering = ['-sent_at']

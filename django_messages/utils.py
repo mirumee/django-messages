@@ -2,6 +2,7 @@
 import re
 
 from django.conf import settings
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.contrib.sites.models import Site
 from django.utils.encoding import force_unicode
 from django.utils.text import wrap
@@ -60,3 +61,16 @@ def new_message_email(sender, instance, signal,
         except Exception, e:
             #print e
             pass #fail silently
+
+def paginate(request, object_list, items_per_page=10):
+    paginator = Paginator(object_list, items_per_page)
+    page = request.GET.get('page')
+
+    try:
+        objects = paginator.page(page)
+    except (TypeError, PageNotAnInteger): # using TypeError because of a bug in Django
+        objects = paginator.page(1)
+    except EmptyPage:
+        objects = paginator.page(paginator.num_pages)
+
+    return objects

@@ -14,7 +14,7 @@ from django.conf import settings
 
 from django_messages.models import Message
 from django_messages.forms import ComposeForm
-from django_messages.utils import format_quote
+from django_messages.utils import format_quote, paginate
 
 def inbox(request, template_name='django_messages/inbox.html'):
     """
@@ -22,9 +22,9 @@ def inbox(request, template_name='django_messages/inbox.html'):
     Optional Arguments:
         ``template_name``: name of the template to use.
     """
-    message_list = Message.objects.inbox_for(request.user)
+    message_list = paginate(request, Message.objects.inbox_for(request.user))
     return render_to_response(template_name, {
-        'message_list': message_list,
+        'messages': message_list,
     }, context_instance=RequestContext(request))
 inbox = login_required(inbox)
 
@@ -34,9 +34,9 @@ def outbox(request, template_name='django_messages/outbox.html'):
     Optional arguments:
         ``template_name``: name of the template to use.
     """
-    message_list = Message.objects.outbox_for(request.user)
+    message_list = paginate(request, Message.objects.outbox_for(request.user))
     return render_to_response(template_name, {
-        'message_list': message_list,
+        'messages': message_list,
     }, context_instance=RequestContext(request))
 outbox = login_required(outbox)
 
@@ -48,9 +48,9 @@ def trash(request, template_name='django_messages/trash.html'):
     Hint: A Cron-Job could periodicly clean up old messages, which are deleted
     by sender and recipient.
     """
-    message_list = Message.objects.trash_for(request.user)
+    message_list = paginate(request, Message.objects.trash_for(request.user))
     return render_to_response(template_name, {
-        'message_list': message_list,
+        'messages': message_list,
     }, context_instance=RequestContext(request))
 trash = login_required(trash)
 

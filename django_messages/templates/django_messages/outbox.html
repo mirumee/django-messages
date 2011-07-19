@@ -2,13 +2,13 @@
 {% load i18n %} 
 {% block content %} 
 <h1>{% trans "Sent Messages" %}</h1>
-{% if message_list %} 
+{% if messages.object_list %} 
 <table class="messages">
     <thead>
         <tr><th>{% trans "Recipient" %}</th><th>{% trans "Subject" %}</th><th>{% trans "Sent" %}</th><th>{% trans "Action" %}</th></tr>
     </thead>
     <tbody>
-{% for message in message_list %} 
+{% for message in messages.object_list %} 
     <tr>
         <td>{{ message.recipient }}</td>
         <td>
@@ -20,6 +20,15 @@
 {% endfor %}
     </tbody>
 </table>
+<div class="pagination">
+   {% if messages.has_previous %}
+     <a href="?page={{ messages.previous_page_number }}" class="previous-page">previous</a>
+   {% endif %}
+   <span class="current-page">Page {{ messages.number }} of {{ messages.paginator.num_pages }}</span>
+   {% if messages.has_next %}
+     <a href="?page={{ messages.next_page_number }}" class="next-page">next</a>
+   {% endif %}
+</div>
 {% else %}
 <p>{% trans "No messages." %}</p>
 {% endif %}   

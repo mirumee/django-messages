@@ -2,21 +2,24 @@ from django import forms
 from django.conf import settings
 from django.utils.translation import gettext_lazy as _
 from django.contrib import admin
-from django.contrib.auth.models import User, Group
+from django.contrib.auth.models import Group
+from django.contrib.auth import get_user_model
+
 
 if "notification" in settings.INSTALLED_APPS:
     from notification import models as notification
 else:
     notification = None
-    
+
 from django_messages.models import Message
+
 
 class MessageAdminForm(forms.ModelForm):
     """
     Custom AdminForm to enable messages to groups and all users.
     """
     recipient = forms.ModelChoiceField(
-        label=_('Recipient'), queryset=User.objects.all(), required=True)
+        label=_('Recipient'), queryset=get_user_model().objects.all(), required=True)
 
     group = forms.ChoiceField(label=_('group'), required=False,
         help_text=_('Creates the message optionally for all users or a group of users.'))
@@ -70,7 +73,7 @@ class MessageAdmin(admin.ModelAdmin):
         the message is effectively resent to those users.
         """
         obj.save()
-        
+
         if notification:
             # Getting the appropriate notice labels for the sender and recipients.
             if obj.parent_msg is None:
@@ -80,7 +83,7 @@ class MessageAdmin(admin.ModelAdmin):
 
         if form.cleaned_data['group'] == 'all':
             # send to all users
-            recipients = User.objects.exclude(pk=obj.recipient.pk)
+            recipients = get_user_model().objects.exclude(pk=obj.recipient.pk)
         else:
             # send to a group of users
             recipients = []
@@ -98,5 +101,5 @@ class MessageAdmin(admin.ModelAdmin):
             if notification:
                 # Notification for the recipient.
                 notification.send([user], recipients_label, {'message' : obj,})
-            
+
 admin.site.register(Message, MessageAdmin)

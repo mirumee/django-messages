@@ -34,6 +34,7 @@ class MessageAdminForm(forms.ModelForm):
 
     class Meta:
         model = Message
+        exclude = ()
 
 class MessageAdmin(admin.ModelAdmin):
     form = MessageAdminForm
